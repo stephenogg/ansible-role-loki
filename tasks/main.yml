@@ -123,9 +123,9 @@
         - restart loki
 
 
-- name: create systemd service unit
+- name: create systemd service units
   template:
-    src: loki.service.j2
+    src: "{{ item}}.service.j2"
     dest: /etc/systemd/system/loki.service
     owner: root
     group: root
