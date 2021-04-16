@@ -121,6 +121,7 @@
         - promtail
       notify:
         - restart loki
+        - restart promtail
 
 
 - name: create systemd service units
