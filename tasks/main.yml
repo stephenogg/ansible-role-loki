@@ -34,6 +34,20 @@
     - "{{ promtail_config_dir }}"
 
 - block:
+    - name: "Get checksum list"
+      set_fact:
+        __loki_checksums: "{{ lookup('url', 'https://github.com/grafana/loki/releases/download/v' + loki_version + '/sha256sums.txt', wantlist=True) | list }}"
+      run_once: true
+
+    - name: "Get checksum for {{ go_arch }} architecture"
+      set_fact:
+        __loki_checksum: "{{ item.split(' ')[0] }}"
+      with_items: "{{ __loki_checksums }}"
+      when:
+        - "('linux-' + go_arch + '.zip') in item"
+  delegate_to: localhost
+
+- block:
     - name: download loki binary to local folder
       become: false
       get_url:
