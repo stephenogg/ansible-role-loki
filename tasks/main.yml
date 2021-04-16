@@ -31,6 +31,7 @@
     mode: 0770
   with_items:
     - "{{ loki_config_dir }}"
+    - "{{ promtail_config_dir }}"
 
 - block:
     - name: download loki binary to local folder
