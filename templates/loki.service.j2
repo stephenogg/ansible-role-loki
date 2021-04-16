@@ -13,8 +13,7 @@ User=loki
 Group=loki
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStart={{ _loki_binary_install_dir }}/loki \
-  --storage.tsdb.path={{ prometheus_db_dir }} \
-  --config.file={{ prometheus_config_dir }}/prometheus.yml
+  -config.file={{ loki_config_dir }}/loki-config.yml
 
 CapabilityBoundingSet=CAP_SET_UID
 LimitNOFILE=65000
