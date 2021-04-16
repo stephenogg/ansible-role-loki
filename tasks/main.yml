@@ -91,9 +91,6 @@
         - promtail
       notify:
         - restart loki
-  when:
-    - loki_binary_local_dir | length == 0
-    - not loki_skip_install
 
 
 - name: create systemd service unit
