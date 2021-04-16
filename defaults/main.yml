@@ -5,3 +5,5 @@ loki_config_dir: /etc/loki
 loki_db_dir: /var/lib/loki
 loki_read_only_dirs: []
 promtail_config_dir: /etc/promtail
+loki_config_file: loki-config-yml.j2
+promtail_config_file: promtail-config-yml.j2
