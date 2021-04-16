@@ -1,7 +1,7 @@
 {{ ansible_managed | comment }}
 
 [Unit]
-Description=Loki
+Description=Promtail
 After=network-online.target
 Requires=local-fs.target
 After=local-fs.target
@@ -12,8 +12,8 @@ Environment="GOMAXPROCS={{ ansible_processor_vcpus|default(ansible_processor_cou
 User=loki
 Group=loki
 ExecReload=/bin/kill -HUP $MAINPID
-ExecStart={{ _loki_binary_install_dir }}/loki \
-  -config.file={{ loki_config_dir }}/loki-config.yml
+ExecStart={{ _loki_binary_install_dir }}/promtail \
+  -config.file={{ promtail_config_dir }}/promtail-config.yml
 
 CapabilityBoundingSet=CAP_SET_UID
 LimitNOFILE=65000

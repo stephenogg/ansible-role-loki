@@ -1,4 +1,19 @@
 ---
+- name: Assert usage of systemd as an init system
+  assert:
+    that: ansible_service_mgr == 'systemd'
+    msg: "This module only works with systemd"
+
+- name: Get systemd version
+  command: systemctl --version
+  changed_when: false
+  check_mode: false
+  register: __systemd_version
+
+- name: Set systemd version fact
+  set_fact:
+    loki_systemd_version: "{{ __systemd_version.stdout_lines[0].split(' ')[-1] }}"
+    
 - name: create loki system group
   group:
     name: loki
@@ -31,6 +46,21 @@
     mode: 0770
   with_items:
     - "{{ loki_config_dir }}"
+    - "{{ promtail_config_dir }}"
+
+- block:
+    - name: "Get checksum list"
+      set_fact:
+        __loki_checksums: "{{ lookup('url', 'https://github.com/grafana/loki/releases/download/v' + loki_version + '/sha256sums.txt', wantlist=True) | list }}"
+      run_once: true
+
+    - name: "Get checksum for {{ go_arch }} architecture"
+      set_fact:
+        __loki_checksum: "{{ item.split(' ')[0] }}"
+      with_items: "{{ __loki_checksums }}"
+      when:
+        - "('linux-' + go_arch + '.zip') in item"
+  delegate_to: localhost
 
 - block:
     - name: download loki binary to local folder
@@ -91,14 +121,41 @@
         - promtail
       notify:
         - restart loki
+        - restart promtail
+        
+- name: configure loki
+  copy:
+    src: "{{ loki_config_file }}"
+    dest: "{{ loki_config_dir }}/loki-config.yml"
+    force: true
+    owner: root
+    group: loki
+    mode: 0640
+  notify:
+    - reload loki
+
+- name: configure promtail
+  copy:
+    src: "{{ promtail_config_file }}"
+    dest: "{{ promtail_config_dir }}/promtail-config.yml"
+    force: true
+    owner: root
+    group: loki
+    mode: 0640
+  notify:
+    - reload promtail
 
 
-- name: create systemd service unit
+- name: create systemd service units
   template:
-    src: loki.service.j2
-    dest: /etc/systemd/system/loki.service
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service
     owner: root
     group: root
     mode: 0644
+  with_items:
+    - loki
+    - promtail
   notify:
     - restart loki
+    - restart promtail
