@@ -122,6 +122,17 @@
       notify:
         - restart loki
         - restart promtail
+        
+- name: configure loki
+  template:
+    src: "{{ loki_config_file }}"
+    dest: "{{ loki_config_dir }}/loki-config.yml"
+    force: true
+    owner: root
+    group: loki
+    mode: 0640
+  notify:
+    - reload loki        
 
 
 - name: create systemd service units
