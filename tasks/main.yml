@@ -125,10 +125,14 @@
 
 - name: create systemd service units
   template:
-    src: "{{ item}}.service.j2"
-    dest: /etc/systemd/system/loki.service
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service
     owner: root
     group: root
     mode: 0644
+  with_items:
+    - loki
+    - promtail
   notify:
     - restart loki
+    - restart promtail
