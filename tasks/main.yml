@@ -51,7 +51,7 @@
 - block:
     - name: "Get checksum list"
       set_fact:
-        __loki_checksums: "{{ lookup('url', 'https://github.com/grafana/loki/releases/download/v' + loki_version + '/sha256sums.txt', wantlist=True) | list }}"
+        __loki_checksums: "{{ lookup('url', 'https://github.com/grafana/loki/releases/download/v' + loki_version + '/SHA256SUMS', wantlist=True) | list }}"
       run_once: true
 
     - name: "Get checksum for {{ go_arch }} architecture"
@@ -59,8 +59,18 @@
         __loki_checksum: "{{ item.split(' ')[0] }}"
       with_items: "{{ __loki_checksums }}"
       when:
-        - "('linux-' + go_arch + '.zip') in item"
+        - "('loki-linux-' + go_arch + '.zip') in item"
+        
+        
+    - name: "Get checksum for {{ go_arch }} architecture"
+      set_fact:
+        __promtail_checksum: "{{ item.split(' ')[0] }}"
+      with_items: "{{ __loki_checksums }}"
+      when:
+        - "('promtail-linux-' + go_arch + '.zip') in item"   
   delegate_to: localhost
+  
+  
 
 - block:
     - name: download loki binary to local folder
@@ -82,7 +92,7 @@
       get_url:
         url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/promtail-linux-{{ go_arch }}.zip"
         dest: "/tmp/promtail-{{ loki_version }}.linux-{{ go_arch }}.zip"
-        checksum: "sha256:{{ __loki_checksum }}"
+        checksum: "sha256:{{ __promtail_checksum }}"
       register: _download_archive
       until: _download_archive is succeeded
       retries: 5
@@ -96,7 +106,7 @@
       unarchive:
         src: "/tmp/loki-{{ loki_version }}.linux-{{ go_arch }}.zip"
         dest: "/tmp"
-        creates: "/tmp/loki-{{ loki_version }}.linux-{{ go_arch }}/loki"
+        creates: "/tmp/loki-linux-{{ go_arch }}"
       delegate_to: localhost
       check_mode: false
       
@@ -105,13 +115,13 @@
       unarchive:
         src: "/tmp/promtail-{{ loki_version }}.linux-{{ go_arch }}.zip"
         dest: "/tmp"
-        creates: "/tmp/promtail-{{ loki_version }}.linux-{{ go_arch }}/promtail"
+        creates: "/tmp/promtail-linux-{{ go_arch }}"
       delegate_to: localhost
       check_mode: false      
 
     - name: propagate official loki and promtail binaries
       copy:
-        src: "/tmp/{{ item}}-{{ loki_version }}.linux-{{ go_arch }}/{{ item }}"
+        src: "/tmp/{{ item}}-linux-{{ go_arch }}"
         dest: "{{ _loki_binary_install_dir }}/{{ item }}"
         mode: 0755
         owner: root
@@ -149,7 +159,7 @@
 - name: create systemd service units
   template:
     src: "{{ item }}.service.j2"
-    dest: "/etc/systemd/system/{{ item }}.service
+    dest: "/etc/systemd/system/{{ item }}.service"
     owner: root
     group: root
     mode: 0644
