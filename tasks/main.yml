@@ -26,6 +26,8 @@
     system: true
     shell: "/usr/sbin/nologin"
     group: loki
+    groups: adm
+    append: true
     createhome: false
     home: "{{ loki_db_dir }}"
 
