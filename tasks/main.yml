@@ -98,7 +98,7 @@
         - restart loki
         
 - name: loki | configure loki
-  copy:
+  template:
     src: "{{ loki_config_file }}"
     dest: "{{ loki_config_dir }}/loki-config.yml"
     force: true
