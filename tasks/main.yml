@@ -1,37 +1,36 @@
 ---
-- name: Assert usage of systemd as an init system
+- name: loki | assert usage of systemd as an init system
   assert:
     that: ansible_service_mgr == 'systemd'
     msg: "This module only works with systemd"
 
-- name: Get systemd version
+- name: loki | get systemd version
   command: systemctl --version
   changed_when: false
   check_mode: false
   register: __systemd_version
 
-- name: Set systemd version fact
+- name: loki | set systemd version fact
   set_fact:
     loki_systemd_version: "{{ __systemd_version.stdout_lines[0].split(' ')[-1] }}"
     
-- name: create loki system group
+- name: loki | create loki system group
   group:
     name: loki
     system: true
     state: present
 
-- name: create loki system user
+- name: loki | create loki system user
   user:
     name: loki
     system: true
     shell: "/usr/sbin/nologin"
     group: loki
-    groups: adm
     append: true
     createhome: false
     home: "{{ loki_db_dir }}"
 
-- name: create loki data directory
+- name: loki | create loki data directory
   file:
     path: "{{ loki_db_dir }}"
     state: directory
@@ -39,43 +38,33 @@
     group: loki
     mode: 0755
 
-- name: create loki configuration directories
+- name: loki | create loki configuration directory
   file:
-    path: "{{ item }}"
+    path: "{{ loki_config_dir }}"
     state: directory
     owner: root
     group: loki
     mode: 0770
-  with_items:
-    - "{{ loki_config_dir }}"
-    - "{{ promtail_config_dir }}"
+
 
 - block:
-    - name: "Get checksum list"
+    - name: loki | get checksum list
       set_fact:
         __loki_checksums: "{{ lookup('url', 'https://github.com/grafana/loki/releases/download/v' + loki_version + '/SHA256SUMS', wantlist=True) | list }}"
       run_once: true
 
-    - name: "Get checksum for {{ go_arch }} architecture"
+    - name: "loki | get checksum for {{ go_arch }} architecture"
       set_fact:
         __loki_checksum: "{{ item.split(' ')[0] }}"
       with_items: "{{ __loki_checksums }}"
       when:
         - "('loki-linux-' + go_arch + '.zip') in item"
-        
-        
-    - name: "Get checksum for {{ go_arch }} architecture"
-      set_fact:
-        __promtail_checksum: "{{ item.split(' ')[0] }}"
-      with_items: "{{ __loki_checksums }}"
-      when:
-        - "('promtail-linux-' + go_arch + '.zip') in item"   
-  delegate_to: localhost
+   delegate_to: localhost
   
   
 
 - block:
-    - name: download loki binary to local folder
+    - name: loki | download loki binary to local folder
       become: false
       get_url:
         url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/loki-linux-{{ go_arch }}.zip"
@@ -89,21 +78,7 @@
       delegate_to: localhost
       check_mode: false
       
-    - name: download promtail binary to local folder
-      become: false
-      get_url:
-        url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/promtail-linux-{{ go_arch }}.zip"
-        dest: "/tmp/promtail-{{ loki_version }}.linux-{{ go_arch }}.zip"
-        checksum: "sha256:{{ __promtail_checksum }}"
-      register: _download_archive
-      until: _download_archive is succeeded
-      retries: 5
-      delay: 2
-      # run_once: true # <-- this cannot be set due to multi-arch support
-      delegate_to: localhost
-      check_mode: false
-
-    - name: unpack loki binary
+    - name: loki | unpack loki binary
       become: false
       unarchive:
         src: "/tmp/loki-{{ loki_version }}.linux-{{ go_arch }}.zip"
@@ -112,30 +87,17 @@
       delegate_to: localhost
       check_mode: false
       
-    - name: unpack promtail binary
-      become: false
-      unarchive:
-        src: "/tmp/promtail-{{ loki_version }}.linux-{{ go_arch }}.zip"
-        dest: "/tmp"
-        creates: "/tmp/promtail-linux-{{ go_arch }}"
-      delegate_to: localhost
-      check_mode: false      
-
-    - name: propagate official loki and promtail binaries
+    - name: loki | propagate official loki and binary
       copy:
-        src: "/tmp/{{ item}}-linux-{{ go_arch }}"
-        dest: "{{ _loki_binary_install_dir }}/{{ item }}"
+        src: "/tmp/loki-linux-{{ go_arch }}"
+        dest: "{{ _loki_binary_install_dir }}/loki"
         mode: 0755
         owner: root
         group: root
-      with_items:
-        - loki
-        - promtail
       notify:
         - restart loki
-        - restart promtail
         
-- name: configure loki
+- name: loki | configure loki
   copy:
     src: "{{ loki_config_file }}"
     dest: "{{ loki_config_dir }}/loki-config.yml"
@@ -146,28 +108,12 @@
   notify:
     - reload loki
 
-- name: configure promtail
-  copy:
-    src: "{{ promtail_config_file }}"
-    dest: "{{ promtail_config_dir }}/promtail-config.yml"
-    force: true
-    owner: root
-    group: loki
-    mode: 0640
-  notify:
-    - reload promtail
-
-
-- name: create systemd service units
+- name: loki | create systemd service unit
   template:
-    src: "{{ item }}.service.j2"
-    dest: "/etc/systemd/system/{{ item }}.service"
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
     owner: root
     group: root
     mode: 0644
-  with_items:
-    - loki
-    - promtail
   notify:
     - restart loki
-    - restart promtail
