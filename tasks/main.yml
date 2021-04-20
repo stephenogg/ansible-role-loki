@@ -53,13 +53,14 @@
         __loki_checksums: "{{ lookup('url', 'https://github.com/grafana/loki/releases/download/v' + loki_version + '/SHA256SUMS', wantlist=True) | list }}"
       run_once: true
 
+
     - name: "loki | get checksum for {{ go_arch }} architecture"
       set_fact:
         __loki_checksum: "{{ item.split(' ')[0] }}"
       with_items: "{{ __loki_checksums }}"
       when:
         - "('loki-linux-' + go_arch + '.zip') in item"
-   delegate_to: localhost
+  delegate_to: localhost
   
   
 
