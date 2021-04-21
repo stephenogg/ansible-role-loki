@@ -27,6 +27,9 @@
     shell: "/usr/sbin/nologin"
     group: loki
     append: true
+    groups:
+      - adm
+      - systemd-journal
     createhome: false
     home: "{{ loki_db_dir }}"
 
